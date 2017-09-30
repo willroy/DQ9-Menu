@@ -1,55 +1,95 @@
 #!/usr/bin/env ruby
 require 'curses'
+include Curses
 
-class CursesStuff
-  def initialize
-    @scrn = window.new(7, 40, 7, 2)
-    @scrn.box("|", "~")
+class CursesStuff 
+  def initialize(scrn)
+    @scrn = scrn
     @mitems = {"0" => "Money Management", "1" => "Option 2", "2" => "Option 3"}
     @select = 0
     @count = 0
   end
   def put
-    $scrn.pos(3+count, 3)
-    count += 1
+    @scrn.setpos(3+@count, 3)
+    @count += 1
+  end
+  def get
+    return @scrn.getstr()
+  end
+  def getchar
+    return @scrn.getch()
   end
   def revertpos
     @count = 0
   end
-  def printmenu()
-    revertpos()
-    mitems.each do |k, v|
-      @scrn.attrset(k == postition? A_STANDOUT : A_NORMAL)
-      @scrn.addstr "item_#{i}"
+  def attrsett(k)
+    @scrn.attrset(k == @select? A_STANDOUT : A_NORMAL)
+  end
+end
+
+class CursesMenu 
+  def initialize(curses)
+    @mitems = {"0" => "Money Management", "1" => "Option 2", "2" => "Option 3"}
+    @select = 0
+    @count = 0
+    @enter = false
+    @c = curses
+  end
+  def menuloop
+    while true
+      @enter = false
+      scroll
+      printmenu
+      return @select if @enter == true
+    end
+  end
+  def printmenu
+    @c.revertpos()
+    @mitems.each do |k, v|
+      @c.attrsett(k)
+      @c.put 
     end
   end
   def scroll
-    case char
-      when "w" position -= 1 unless @postion = 0
-      when "s" position += 1 unless @postion = 2
+    case @c.getchar()
+      when "w" 
+        @select -= 1 unless @select == 0
+      when "s" 
+        @select += 1 unless @select == 2
+      when "x" 
+        @enter == true 
+      when "q"
+        abort
     end
   end
 end
 
 class Money_Management
-  def addamounts(ary)
+  def initialize(curses)
+    @curses = curses
+    @ary = Array.new
+  end
+  def addamounts
     total = 0
-    ary.each {|i| total += i}
+    @ary.each {|i| total += i}
     total
   end
   def askamounts
-    puts "Add amounts and then type Q to quit"
-    ary = Array.new
+    put "Add amounts and then type Q to quit"
     while true
-      print "=> "
-      input = gets.chomp
-      ary.push(input.to_i()) unless input == "Q"
+      put "Type Then enter"
+      input = get 
+      @ary.push(input.to_i()) unless input == "Q"
       break if input == "Q"
     end
-    ary
-  end 
+  end
 end
-
-money = Money_Management.new()
-ary = askamounts()
-puts addamounts(ary)
+scrn = Window.new(30, 50, 5, 2)
+scrn.box("|", "~")
+curses = CursesStuff.new(scrn)
+menu = CursesMenu.new(curses)
+money = Money_Management.new(curses)
+while true
+  choice = menu.menuloop()
+  money.askamounts if choice == "0"
+end
